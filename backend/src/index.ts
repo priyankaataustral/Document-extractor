@@ -19,7 +19,8 @@ import entitiesRouter from "./routes/entities.js";
 const app = express();
 
 // Configuration
-const PORT = process.env.PORT || 3001;
+const PORT = parseInt(process.env.PORT || "3001", 10);
+const HOST = process.env.HOST || "0.0.0.0"; // Bind to 0.0.0.0 for Replit/cloud hosting
 const NODE_ENV = process.env.NODE_ENV || "development";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
@@ -35,12 +36,25 @@ function validateEnv(): void {
   }
 }
 
-// Middleware
+// CORS configuration - allows multiple origins for Replit/production flexibility
+const allowedOrigins = FRONTEND_URL.split(",").map((url) => url.trim());
+
 app.use(
   cors({
-    origin: NODE_ENV === "production" ? FRONTEND_URL : true,
-    methods: ["GET", "POST", "DELETE"],
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl)
+      if (!origin) return callback(null, true);
+      // In development, allow all origins
+      if (NODE_ENV !== "production") return callback(null, true);
+      // In production, check against allowed list
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      callback(new Error("Not allowed by CORS"));
+    },
+    methods: ["GET", "POST", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type"],
+    credentials: true,
   })
 );
 app.use(express.json());
@@ -96,12 +110,12 @@ app.use(
 function start(): void {
   validateEnv();
 
-  app.listen(PORT, () => {
+  app.listen(PORT, HOST, () => {
     console.log(`
 ╔═══════════════════════════════════════════════════════════╗
 ║         Document Extractor Backend                        ║
 ╠═══════════════════════════════════════════════════════════╣
-║  Server running on port ${String(PORT).padEnd(32)}║
+║  Server running on ${HOST}:${String(PORT).padEnd(26)}║
 ║  Environment: ${NODE_ENV.padEnd(40)}║
 ║  Frontend URL: ${FRONTEND_URL.padEnd(39).slice(0, 39)}║
 ╚═══════════════════════════════════════════════════════════╝

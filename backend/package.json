@@ -7,7 +7,9 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "typecheck": "tsc --noEmit"
+    "start:dev": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "replit": "npm install && npm run build && npm run start"
   },
   "keywords": ["document-extraction", "claude", "pdf", "docx"],
   "author": "",
