@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import {
   getEntities,
   deleteEntity,
-  exportEntitiesCsv,
   ExtractedEntity,
 } from "../services/api";
 
@@ -17,11 +16,8 @@ function EntitiesPage() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [selectedEntity, setSelectedEntity] = useState<ExtractedEntity | null>(
-    null
-  );
-  const [exportingCsv, setExportingCsv] = useState(false);
-  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [selectedEntity, setSelectedEntity] = useState<ExtractedEntity | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const limit = 25;
 
@@ -45,27 +41,10 @@ function EntitiesPage() {
     fetchEntities();
   }, [fetchEntities]);
 
-  // Close export menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = () => {
-      if (showExportMenu) {
-        setShowExportMenu(false);
-      }
-    };
-
-    if (showExportMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showExportMenu]);
-
   // Handle search
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearch(e.target.value);
-    setPage(1); // Reset to first page on search
+    setPage(1);
   };
 
   // Handle delete
@@ -103,116 +82,83 @@ function EntitiesPage() {
 
   const totalPages = Math.ceil(total / limit);
 
-  // Export all entities to CSV (client-side generation)
-  const exportToCsv = async () => {
-    console.log("Client CSV export started");
-    setExportingCsv(true);
-    setShowExportMenu(false);
+  // Simple CSV Export - fetches all records and downloads as CSV
+  const handleExportCsv = async () => {
+    setExporting(true);
+
     try {
-      // Fetch all entities (not just current page)
-      const response = await getEntities(1, total || 10000, search || undefined);
-      if (response.success && response.data) {
-        const allEntities = response.data.entities;
-        console.log("Fetched entities for export:", allEntities.length);
-        downloadCsv(allEntities);
-      } else {
-        console.error("Failed to fetch entities:", response);
-        alert("Failed to fetch entities for export");
+      // Fetch ALL entities (not just current page)
+      const response = await getEntities(1, 10000, search || undefined);
+
+      if (!response.success || !response.data) {
+        alert("Failed to fetch records for export");
+        return;
       }
+
+      const allEntities = response.data.entities;
+
+      if (allEntities.length === 0) {
+        alert("No records to export");
+        return;
+      }
+
+      // Build CSV content
+      const headers = [
+        "Full Name",
+        "Email",
+        "Phone Number",
+        "ID Number",
+        "Address",
+        "Organisation",
+        "Role/Title",
+        "Comments",
+        "Source Document",
+        "Extracted Date"
+      ];
+
+      const escapeField = (field: string | null): string => {
+        if (!field) return "";
+        if (field.includes(",") || field.includes('"') || field.includes("\n")) {
+          return '"' + field.replace(/"/g, '""') + '"';
+        }
+        return field;
+      };
+
+      const rows = allEntities.map(entity => [
+        escapeField(entity.full_name),
+        escapeField(entity.email),
+        escapeField(entity.phone_number),
+        escapeField(entity.id_number),
+        escapeField(entity.address),
+        escapeField(entity.organisation),
+        escapeField(entity.role_title),
+        escapeField(entity.comments),
+        escapeField(entity.source_document_name),
+        formatDate(entity.created_at)
+      ].join(","));
+
+      const csvContent = [headers.join(","), ...rows].join("\n");
+
+      // Create download
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      const timestamp = new Date().toISOString().slice(0, 10);
+      link.href = url;
+      link.download = `extracted-records-${timestamp}.csv`;
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
     } catch (error) {
-      console.error("Failed to export CSV:", error);
-      alert("Failed to export CSV: " + (error instanceof Error ? error.message : "Unknown error"));
+      console.error("Export failed:", error);
+      alert("Export failed. Please try again.");
     } finally {
-      setExportingCsv(false);
+      setExporting(false);
     }
-  };
-
-  // Export using backend-generated CSV
-  const exportToCsvBackend = async () => {
-    console.log("Backend CSV export started");
-    setExportingCsv(true);
-    setShowExportMenu(false);
-    try {
-      await exportEntitiesCsv(search || undefined);
-      console.log("Backend CSV export completed");
-    } catch (error) {
-      console.error("Failed to export CSV:", error);
-      alert("Failed to export CSV: " + (error instanceof Error ? error.message : "Unknown error"));
-    } finally {
-      setExportingCsv(false);
-    }
-  };
-
-  // Convert entities to CSV and trigger download
-  const downloadCsv = (entities: ExtractedEntity[]) => {
-    console.log("Starting CSV download for", entities.length, "entities");
-    const headers = [
-      "Full Name",
-      "Email",
-      "Phone Number",
-      "ID Number",
-      "Address",
-      "Organisation",
-      "Role/Title",
-      "Comments",
-      "Source Document",
-      "Extracted Date"
-    ];
-
-    const csvContent = [
-      headers.join(","),
-      ...entities.map(entity => [
-        escapeCsvField(entity.full_name),
-        escapeCsvField(entity.email),
-        escapeCsvField(entity.phone_number),
-        escapeCsvField(entity.id_number),
-        escapeCsvField(entity.address),
-        escapeCsvField(entity.organisation),
-        escapeCsvField(entity.role_title),
-        escapeCsvField(entity.comments),
-        escapeCsvField(entity.source_document_name),
-        new Date(entity.created_at).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit"
-        })
-      ].join(","))
-    ].join("\n");
-
-    console.log("Generated CSV content length:", csvContent.length);
-
-    // Create and trigger download
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    
-    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
-    const filename = `extracted-entities-${timestamp}.csv`;
-    link.setAttribute("download", filename);
-    
-    console.log("Triggering download for file:", filename);
-    
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    
-    console.log("CSV download completed");
-  };
-
-  // Escape CSV field (handle quotes and commas)
-  const escapeCsvField = (field: string | null): string => {
-    if (!field) return "";
-    
-    // If field contains comma, quote, or newline, wrap in quotes and escape internal quotes
-    if (field.includes(",") || field.includes('"') || field.includes("\n")) {
-      return '"' + field.replace(/"/g, '""') + '"';
-    }
-    return field;
   };
 
   return (
@@ -220,72 +166,13 @@ function EntitiesPage() {
       <div className="card">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
           <h2>Extracted Records ({total})</h2>
-          <div style={{ position: "relative", display: "inline-block" }}>
-            <button
-              className="btn btn-primary"
-              onClick={() => setShowExportMenu(!showExportMenu)}
-              disabled={exportingCsv || entities.length === 0}
-              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
-            >
-              {exportingCsv ? (
-                <>
-                  <span className="spinner" style={{ width: "14px", height: "14px" }} />
-                  Exporting...
-                </>
-              ) : (
-                <>
-                  📊 Export CSV ▼
-                </>
-              )}
-            </button>
-            {showExportMenu && !exportingCsv && (
-              <div style={{
-                position: "absolute",
-                top: "100%",
-                right: 0,
-                backgroundColor: "white",
-                border: "1px solid #ddd",
-                borderRadius: "4px",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-                zIndex: 1000,
-                minWidth: "200px"
-              }}>
-                <button
-                  style={{
-                    width: "100%",
-                    padding: "0.5rem 1rem",
-                    border: "none",
-                    backgroundColor: "transparent",
-                    cursor: "pointer",
-                    textAlign: "left",
-                    borderBottom: "1px solid #eee"
-                  }}
-                  onClick={exportToCsvBackend}
-                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#f5f5f5"}
-                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = "transparent"}
-                >
-                  <strong>Quick Export</strong><br />
-                  <small style={{ color: "#666" }}>Backend-generated CSV (recommended)</small>
-                </button>
-                <button
-                  style={{
-                    width: "100%",
-                    padding: "0.5rem 1rem",
-                    border: "none",
-                    backgroundColor: "transparent",
-                    cursor: "pointer",
-                    textAlign: "left"
-                  }}
-                  onClick={exportToCsv}
-                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#f5f5f5"}
-                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = "transparent"}
-                >
-                  <strong>Client Export</strong><br />
-                  <small style={{ color: "#666" }}>Browser-generated CSV</small>
-                </button>
-              </div>
-            )}
-          </div>
+          <button
+            className="btn btn-primary"
+            onClick={handleExportCsv}
+            disabled={exporting || total === 0}
+          >
+            {exporting ? "Exporting..." : "Export CSV"}
+          </button>
         </div>
 
         {/* Search */}
@@ -301,9 +188,7 @@ function EntitiesPage() {
         {/* Table */}
         <div className="table-container">
           {loading ? (
-            <div className="table-empty">
-              <span className="spinner" /> Loading...
-            </div>
+            <div className="table-empty">Loading...</div>
           ) : entities.length === 0 ? (
             <div className="table-empty">
               {search
@@ -400,20 +285,11 @@ function EntitiesPage() {
                 <EntityField label="Phone" value={selectedEntity.phone_number} />
                 <EntityField label="ID Number" value={selectedEntity.id_number} />
                 <EntityField label="Address" value={selectedEntity.address} />
-                <EntityField
-                  label="Organisation"
-                  value={selectedEntity.organisation}
-                />
+                <EntityField label="Organisation" value={selectedEntity.organisation} />
                 <EntityField label="Role/Title" value={selectedEntity.role_title} />
                 <EntityField label="Comments" value={selectedEntity.comments} />
-                <EntityField
-                  label="Source Document"
-                  value={selectedEntity.source_document_name}
-                />
-                <EntityField
-                  label="Extracted On"
-                  value={formatDate(selectedEntity.created_at)}
-                />
+                <EntityField label="Source Document" value={selectedEntity.source_document_name} />
+                <EntityField label="Extracted On" value={formatDate(selectedEntity.created_at)} />
               </div>
             </div>
           </div>
@@ -423,14 +299,7 @@ function EntitiesPage() {
   );
 }
 
-// Helper component for displaying entity fields
-function EntityField({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | null;
-}) {
+function EntityField({ label, value }: { label: string; value: string | null }) {
   return (
     <div className="entity-field">
       <label>{label}</label>
