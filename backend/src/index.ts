@@ -36,25 +36,13 @@ function validateEnv(): void {
   }
 }
 
-// CORS configuration - allows multiple origins for Replit/production flexibility
-const allowedOrigins = FRONTEND_URL.split(",").map((url) => url.trim());
-
+// CORS configuration - allows multiple origins or wildcard
 app.use(
   cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or curl)
-      if (!origin) return callback(null, true);
-      // In development, allow all origins
-      if (NODE_ENV !== "production") return callback(null, true);
-      // In production, check against allowed list
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      callback(new Error("Not allowed by CORS"));
-    },
+    origin: FRONTEND_URL === "*" ? true : FRONTEND_URL.split(",").map((url) => url.trim()),
     methods: ["GET", "POST", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type"],
-    credentials: true,
+    credentials: FRONTEND_URL !== "*",
   })
 );
 app.use(express.json());
