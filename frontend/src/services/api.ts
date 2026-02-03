@@ -13,7 +13,6 @@ export interface ExtractedEntity {
   full_name: string | null;
   email: string | null;
   phone_number: string | null;
-  id_number: string | null;
   address: string | null;
   organisation: string | null;
   role_title: string | null;

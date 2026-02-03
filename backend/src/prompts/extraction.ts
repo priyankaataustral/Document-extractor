@@ -25,10 +25,9 @@ export const EXTRACTION_USER_PROMPT = `Extract structured information from the f
       "full_name": "Person's complete name or null if not found",
       "email": "Email address or null if not found",
       "phone_number": "Phone number (any format found) or null if not found",
-      "id_number": "Any ID number (SSN, passport, employee ID, etc.) or null if not found",
       "address": "Full address or partial address if found, or null if not found",
-      "organisation": "Company, organization, or institution name or null if not found",
-      "role_title": "Job title, role, or position or null if not found",
+      "organisation": "Most recent/current employer only, or null if not found",
+      "role_title": "Most recent/current job title only, or null if not found",
       "comments": "Any notes about uncertainty or data quality, or null if confident"
     }
   ]
@@ -38,10 +37,9 @@ EXTRACTION GUIDELINES:
 - full_name: Look for names in headers, signatures, "From:", "To:", or mentioned in text
 - email: Extract any valid email addresses (format: name@domain.com)
 - phone_number: Extract phone numbers in any format (+1, parentheses, dashes, etc.)
-- id_number: Look for employee IDs, passport numbers, SSN, national IDs, reference numbers
 - address: Look for street addresses, city, state, postal codes, country
-- organisation: Company names, university names, government agencies, etc.
-- role_title: Job titles like "Manager", "Director", "Engineer", positions mentioned
+- organisation: Extract ONLY the most recent/current employer. For resumes, this is typically the first company listed in work experience. Ignore previous employers.
+- role_title: Extract ONLY the most recent/current job title at that organisation. Ignore previous positions.
 - comments: Note if data is partially visible, unclear, or you're uncertain
 
 If the document contains multiple people, return multiple objects in the entities array.

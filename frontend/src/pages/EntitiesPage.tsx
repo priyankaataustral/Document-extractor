@@ -107,7 +107,6 @@ function EntitiesPage() {
         "Full Name",
         "Email",
         "Phone Number",
-        "ID Number",
         "Address",
         "Organisation",
         "Role/Title",
@@ -128,7 +127,6 @@ function EntitiesPage() {
         escapeField(entity.full_name),
         escapeField(entity.email),
         escapeField(entity.phone_number),
-        escapeField(entity.id_number),
         escapeField(entity.address),
         escapeField(entity.organisation),
         escapeField(entity.role_title),
@@ -283,7 +281,6 @@ function EntitiesPage() {
                 <EntityField label="Full Name" value={selectedEntity.full_name} />
                 <EntityField label="Email" value={selectedEntity.email} />
                 <EntityField label="Phone" value={selectedEntity.phone_number} />
-                <EntityField label="ID Number" value={selectedEntity.id_number} />
                 <EntityField label="Address" value={selectedEntity.address} />
                 <EntityField label="Organisation" value={selectedEntity.organisation} />
                 <EntityField label="Role/Title" value={selectedEntity.role_title} />
