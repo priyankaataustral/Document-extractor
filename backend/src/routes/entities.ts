@@ -73,6 +73,100 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
 });
 
 /**
+ * GET /api/entities/export/csv
+ *
+ * Export all entities as CSV.
+ * IMPORTANT: This route must come BEFORE /:id to avoid "export" being treated as an ID
+ * Query params:
+ *   - search: Search query (optional)
+ */
+router.get("/export/csv", async (req: Request, res: Response): Promise<void> => {
+  try {
+    console.log("CSV export requested");
+    const search = req.query.search as string;
+    let entities: StoredEntity[];
+
+    if (search && search.trim().length > 0) {
+      // Search mode - get all matching results
+      entities = await searchEntities(search.trim(), 10000);
+    } else {
+      // Get all entities without pagination
+      const result = await getEntities(1, 10000);
+      entities = result.entities;
+    }
+
+    console.log(`Exporting ${entities.length} entities to CSV`);
+
+    // Set CSV headers
+    res.setHeader("Content-Type", "text/csv;charset=utf-8");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="extracted-entities-${new Date().toISOString().slice(0, 10)}.csv"`
+    );
+
+    // CSV headers
+    const headers = [
+      "Full Name",
+      "Email",
+      "Phone Number",
+      "ID Number",
+      "Address",
+      "Organisation",
+      "Role/Title",
+      "Comments",
+      "Source Document",
+      "Extracted Date",
+    ];
+
+    // Helper function to escape CSV fields
+    const escapeCsvField = (field: string | null): string => {
+      if (!field) return "";
+      if (field.includes(",") || field.includes('"') || field.includes("\n")) {
+        return '"' + field.replace(/"/g, '""') + '"';
+      }
+      return field;
+    };
+
+    // Write headers
+    res.write(headers.join(",") + "\n");
+
+    // Write data rows
+    for (const entity of entities) {
+      const row = [
+        escapeCsvField(entity.full_name),
+        escapeCsvField(entity.email),
+        escapeCsvField(entity.phone_number),
+        escapeCsvField(entity.id_number),
+        escapeCsvField(entity.address),
+        escapeCsvField(entity.organisation),
+        escapeCsvField(entity.role_title),
+        escapeCsvField(entity.comments),
+        escapeCsvField(entity.source_document_name),
+        new Date(entity.created_at).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      ].join(",");
+
+      res.write(row + "\n");
+    }
+
+    res.end();
+    console.log("CSV export completed");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("Error exporting entities:", message);
+    res.status(500).json({
+      success: false,
+      error: message,
+    } as ApiResponse<null>);
+  }
+});
+
+/**
  * GET /api/entities/:id
  *
  * Get a single entity by ID.
@@ -109,93 +203,6 @@ router.get("/:id", async (req: Request, res: Response): Promise<void> => {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Error fetching entity:", message);
-    res.status(500).json({
-      success: false,
-      error: message,
-    } as ApiResponse<null>);
-  }
-});
-
-/**
- * GET /api/entities/export/csv
- *
- * Export all entities as CSV.
- * Query params:
- *   - search: Search query (optional)
- */
-router.get("/export/csv", async (req: Request, res: Response): Promise<void> => {
-  try {
-    const search = req.query.search as string;
-    let entities: StoredEntity[];
-
-    if (search && search.trim().length > 0) {
-      // Search mode - get all matching results
-      entities = await searchEntities(search.trim(), 10000); // High limit for export
-    } else {
-      // Get all entities without pagination
-      const result = await getEntities(1, 10000);
-      entities = result.entities;
-    }
-
-    // Set CSV headers
-    res.setHeader('Content-Type', 'text/csv;charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="extracted-entities-${new Date().toISOString().slice(0, 10)}.csv"`);
-
-    // CSV headers
-    const headers = [
-      "Full Name",
-      "Email", 
-      "Phone Number",
-      "ID Number",
-      "Address",
-      "Organisation",
-      "Role/Title",
-      "Comments",
-      "Source Document",
-      "Extracted Date"
-    ];
-
-    // Helper function to escape CSV fields
-    const escapeCsvField = (field: string | null): string => {
-      if (!field) return "";
-      // If field contains comma, quote, or newline, wrap in quotes and escape internal quotes
-      if (field.includes(",") || field.includes('"') || field.includes("\n")) {
-        return '"' + field.replace(/"/g, '""') + '"';
-      }
-      return field;
-    };
-
-    // Write headers
-    res.write(headers.join(",") + "\n");
-
-    // Write data rows
-    for (const entity of entities) {
-      const row = [
-        escapeCsvField(entity.full_name),
-        escapeCsvField(entity.email),
-        escapeCsvField(entity.phone_number),
-        escapeCsvField(entity.id_number),
-        escapeCsvField(entity.address),
-        escapeCsvField(entity.organisation),
-        escapeCsvField(entity.role_title),
-        escapeCsvField(entity.comments),
-        escapeCsvField(entity.source_document_name),
-        new Date(entity.created_at).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit"
-        })
-      ].join(",");
-      
-      res.write(row + "\n");
-    }
-
-    res.end();
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("Error exporting entities:", message);
     res.status(500).json({
       success: false,
       error: message,
