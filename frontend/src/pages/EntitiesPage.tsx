@@ -204,6 +204,7 @@ function EntitiesPage() {
                   <th>Phone</th>
                   <th>Organisation</th>
                   <th>Role</th>
+                  <th>Tech Stack</th>
                   <th>Source</th>
                   <th>Date</th>
                   <th>Actions</th>
@@ -217,6 +218,7 @@ function EntitiesPage() {
                     <td>{truncate(entity.phone_number, 15)}</td>
                     <td>{truncate(entity.organisation, 20)}</td>
                     <td>{truncate(entity.role_title, 20)}</td>
+                    <td>{truncate(entity.technology_stack, 25)}</td>
                     <td>{truncate(entity.source_document_name, 20)}</td>
                     <td>{formatDate(entity.created_at)}</td>
                     <td>
