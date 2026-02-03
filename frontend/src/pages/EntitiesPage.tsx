@@ -47,7 +47,7 @@ function EntitiesPage() {
 
   // Close export menu when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = () => {
       if (showExportMenu) {
         setShowExportMenu(false);
       }
