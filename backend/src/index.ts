@@ -36,13 +36,13 @@ function validateEnv(): void {
   }
 }
 
-// CORS configuration - allows multiple origins or wildcard
+// CORS configuration - allows all origins
 app.use(
   cors({
-    origin: FRONTEND_URL === "*" ? true : FRONTEND_URL.split(",").map((url) => url.trim()),
+    origin: true, // This allows all origins
     methods: ["GET", "POST", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type"],
-    credentials: FRONTEND_URL !== "*",
+    credentials: false, // Set to false when allowing all origins
   })
 );
 app.use(express.json());

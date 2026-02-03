@@ -117,3 +117,16 @@ export async function deleteEntity(
   });
   return response.json();
 }
+
+/**
+ * Export entities as CSV (backend-generated)
+ */
+export async function exportEntitiesCsv(search?: string): Promise<void> {
+  const url = new URL(`${API_BASE}/api/entities/export/csv`);
+  if (search) {
+    url.searchParams.set("search", search);
+  }
+  
+  // Open the CSV download URL in a new window/tab
+  window.open(url.toString(), "_blank");
+}

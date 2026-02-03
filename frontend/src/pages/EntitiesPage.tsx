@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   getEntities,
   deleteEntity,
+  exportEntitiesCsv,
   ExtractedEntity,
 } from "../services/api";
 
@@ -19,6 +20,8 @@ function EntitiesPage() {
   const [selectedEntity, setSelectedEntity] = useState<ExtractedEntity | null>(
     null
   );
+  const [exportingCsv, setExportingCsv] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   const limit = 25;
 
@@ -41,6 +44,23 @@ function EntitiesPage() {
   useEffect(() => {
     fetchEntities();
   }, [fetchEntities]);
+
+  // Close export menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showExportMenu) {
+        setShowExportMenu(false);
+      }
+    };
+
+    if (showExportMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showExportMenu]);
 
   // Handle search
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -83,10 +103,178 @@ function EntitiesPage() {
 
   const totalPages = Math.ceil(total / limit);
 
+  // Export all entities to CSV (client-side generation)
+  const exportToCsv = async () => {
+    setExportingCsv(true);
+    setShowExportMenu(false);
+    try {
+      // Fetch all entities (not just current page)
+      const response = await getEntities(1, total || 10000, search || undefined);
+      if (response.success && response.data) {
+        const allEntities = response.data.entities;
+        downloadCsv(allEntities);
+      } else {
+        alert("Failed to fetch entities for export");
+      }
+    } catch (error) {
+      console.error("Failed to export CSV:", error);
+      alert("Failed to export CSV");
+    } finally {
+      setExportingCsv(false);
+    }
+  };
+
+  // Export using backend-generated CSV
+  const exportToCsvBackend = async () => {
+    setExportingCsv(true);
+    setShowExportMenu(false);
+    try {
+      await exportEntitiesCsv(search || undefined);
+    } catch (error) {
+      console.error("Failed to export CSV:", error);
+      alert("Failed to export CSV");
+    } finally {
+      setExportingCsv(false);
+    }
+  };
+
+  // Convert entities to CSV and trigger download
+  const downloadCsv = (entities: ExtractedEntity[]) => {
+    const headers = [
+      "Full Name",
+      "Email",
+      "Phone Number",
+      "ID Number",
+      "Address",
+      "Organisation",
+      "Role/Title",
+      "Comments",
+      "Source Document",
+      "Extracted Date"
+    ];
+
+    const csvContent = [
+      headers.join(","),
+      ...entities.map(entity => [
+        escapeCsvField(entity.full_name),
+        escapeCsvField(entity.email),
+        escapeCsvField(entity.phone_number),
+        escapeCsvField(entity.id_number),
+        escapeCsvField(entity.address),
+        escapeCsvField(entity.organisation),
+        escapeCsvField(entity.role_title),
+        escapeCsvField(entity.comments),
+        escapeCsvField(entity.source_document_name),
+        new Date(entity.created_at).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit"
+        })
+      ].join(","))
+    ].join("\n");
+
+    // Create and trigger download
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
+    const filename = `extracted-entities-${timestamp}.csv`;
+    link.setAttribute("download", filename);
+    
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Escape CSV field (handle quotes and commas)
+  const escapeCsvField = (field: string | null): string => {
+    if (!field) return "";
+    
+    // If field contains comma, quote, or newline, wrap in quotes and escape internal quotes
+    if (field.includes(",") || field.includes('"') || field.includes("\n")) {
+      return '"' + field.replace(/"/g, '""') + '"';
+    }
+    return field;
+  };
+
   return (
     <div>
       <div className="card">
-        <h2>Extracted Records ({total})</h2>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+          <h2>Extracted Records ({total})</h2>
+          <div style={{ position: "relative", display: "inline-block" }}>
+            <button
+              className="btn btn-primary"
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              disabled={exportingCsv || entities.length === 0}
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+            >
+              {exportingCsv ? (
+                <>
+                  <span className="spinner" style={{ width: "14px", height: "14px" }} />
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  📊 Export CSV ▼
+                </>
+              )}
+            </button>
+            {showExportMenu && !exportingCsv && (
+              <div style={{
+                position: "absolute",
+                top: "100%",
+                right: 0,
+                backgroundColor: "white",
+                border: "1px solid #ddd",
+                borderRadius: "4px",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                zIndex: 1000,
+                minWidth: "200px"
+              }}>
+                <button
+                  style={{
+                    width: "100%",
+                    padding: "0.5rem 1rem",
+                    border: "none",
+                    backgroundColor: "transparent",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    borderBottom: "1px solid #eee"
+                  }}
+                  onClick={exportToCsvBackend}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#f5f5f5"}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                >
+                  <strong>Quick Export</strong><br />
+                  <small style={{ color: "#666" }}>Backend-generated CSV (recommended)</small>
+                </button>
+                <button
+                  style={{
+                    width: "100%",
+                    padding: "0.5rem 1rem",
+                    border: "none",
+                    backgroundColor: "transparent",
+                    cursor: "pointer",
+                    textAlign: "left"
+                  }}
+                  onClick={exportToCsv}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#f5f5f5"}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                >
+                  <strong>Client Export</strong><br />
+                  <small style={{ color: "#666" }}>Browser-generated CSV</small>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Search */}
         <div className="search-box">
