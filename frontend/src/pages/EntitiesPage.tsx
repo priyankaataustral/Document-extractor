@@ -105,6 +105,7 @@ function EntitiesPage() {
 
   // Export all entities to CSV (client-side generation)
   const exportToCsv = async () => {
+    console.log("Client CSV export started");
     setExportingCsv(true);
     setShowExportMenu(false);
     try {
@@ -112,13 +113,15 @@ function EntitiesPage() {
       const response = await getEntities(1, total || 10000, search || undefined);
       if (response.success && response.data) {
         const allEntities = response.data.entities;
+        console.log("Fetched entities for export:", allEntities.length);
         downloadCsv(allEntities);
       } else {
+        console.error("Failed to fetch entities:", response);
         alert("Failed to fetch entities for export");
       }
     } catch (error) {
       console.error("Failed to export CSV:", error);
-      alert("Failed to export CSV");
+      alert("Failed to export CSV: " + (error instanceof Error ? error.message : "Unknown error"));
     } finally {
       setExportingCsv(false);
     }
@@ -126,13 +129,15 @@ function EntitiesPage() {
 
   // Export using backend-generated CSV
   const exportToCsvBackend = async () => {
+    console.log("Backend CSV export started");
     setExportingCsv(true);
     setShowExportMenu(false);
     try {
       await exportEntitiesCsv(search || undefined);
+      console.log("Backend CSV export completed");
     } catch (error) {
       console.error("Failed to export CSV:", error);
-      alert("Failed to export CSV");
+      alert("Failed to export CSV: " + (error instanceof Error ? error.message : "Unknown error"));
     } finally {
       setExportingCsv(false);
     }
@@ -140,6 +145,7 @@ function EntitiesPage() {
 
   // Convert entities to CSV and trigger download
   const downloadCsv = (entities: ExtractedEntity[]) => {
+    console.log("Starting CSV download for", entities.length, "entities");
     const headers = [
       "Full Name",
       "Email",
@@ -175,6 +181,8 @@ function EntitiesPage() {
       ].join(","))
     ].join("\n");
 
+    console.log("Generated CSV content length:", csvContent.length);
+
     // Create and trigger download
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
@@ -185,11 +193,15 @@ function EntitiesPage() {
     const filename = `extracted-entities-${timestamp}.csv`;
     link.setAttribute("download", filename);
     
+    console.log("Triggering download for file:", filename);
+    
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+    
+    console.log("CSV download completed");
   };
 
   // Escape CSV field (handle quotes and commas)

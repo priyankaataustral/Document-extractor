@@ -5,7 +5,7 @@
  */
 
 // Base URL - in production, this should be the Render backend URL
-const API_BASE = import.meta.env.VITE_API_URL || "";
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
 // Types matching the backend
 export interface ExtractedEntity {
@@ -122,11 +122,43 @@ export async function deleteEntity(
  * Export entities as CSV (backend-generated)
  */
 export async function exportEntitiesCsv(search?: string): Promise<void> {
-  const url = new URL(`${API_BASE}/api/entities/export/csv`);
-  if (search) {
-    url.searchParams.set("search", search);
+  try {
+    const url = new URL(`${API_BASE}/api/entities/export/csv`);
+    if (search) {
+      url.searchParams.set("search", search);
+    }
+    
+    console.log("Attempting to download CSV from:", url.toString());
+    
+    // Use fetch instead of window.open for better error handling
+    const response = await fetch(url.toString());
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    // Get the CSV content
+    const csvContent = await response.text();
+    
+    // Create and trigger download
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const downloadUrl = URL.createObjectURL(blob);
+    link.setAttribute("href", downloadUrl);
+    
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
+    const filename = `extracted-entities-${timestamp}.csv`;
+    link.setAttribute("download", filename);
+    
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(downloadUrl);
+    
+    console.log("CSV download completed successfully");
+  } catch (error) {
+    console.error("Error downloading CSV:", error);
+    throw error;
   }
-  
-  // Open the CSV download URL in a new window/tab
-  window.open(url.toString(), "_blank");
 }
