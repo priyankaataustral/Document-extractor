@@ -16,6 +16,7 @@ export interface ExtractedEntity {
   address: string | null;
   organisation: string | null;
   role_title: string | null;
+  technology_stack: string | null;
   comments: string | null;
   source_document_name: string;
   raw_json: Record<string, unknown> | null;

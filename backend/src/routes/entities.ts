@@ -112,6 +112,7 @@ router.get("/export/csv", async (req: Request, res: Response): Promise<void> => 
       "Address",
       "Organisation",
       "Role/Title",
+      "Technology Stack",
       "Comments",
       "Source Document",
       "Extracted Date",
@@ -138,6 +139,7 @@ router.get("/export/csv", async (req: Request, res: Response): Promise<void> => 
         escapeCsvField(entity.address),
         escapeCsvField(entity.organisation),
         escapeCsvField(entity.role_title),
+        escapeCsvField(entity.technology_stack),
         escapeCsvField(entity.comments),
         escapeCsvField(entity.source_document_name),
         new Date(entity.created_at).toLocaleDateString("en-US", {

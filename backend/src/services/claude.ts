@@ -151,6 +151,7 @@ function validateEntities(entities: unknown[]): ExtractedEntity[] {
       address: normalizeString(e.address),
       organisation: normalizeString(e.organisation),
       role_title: normalizeString(e.role_title),
+      technology_stack: normalizeString(e.technology_stack),
       comments: normalizeString(e.comments),
     };
   });
@@ -181,6 +182,7 @@ function createEmptyEntity(): ExtractedEntity {
     address: null,
     organisation: null,
     role_title: null,
+    technology_stack: null,
     comments: null,
   };
 }

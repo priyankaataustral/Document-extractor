@@ -28,6 +28,7 @@ export const EXTRACTION_USER_PROMPT = `Extract structured information from the f
       "address": "Full address or partial address if found, or null if not found",
       "organisation": "Most recent/current employer only, or null if not found",
       "role_title": "Most recent/current job title only, or null if not found",
+      "technology_stack": "Technologies used in the most recent job, or null if not found",
       "comments": "Any notes about uncertainty or data quality, or null if confident"
     }
   ]
@@ -40,6 +41,7 @@ EXTRACTION GUIDELINES:
 - address: Look for street addresses, city, state, postal codes, country
 - organisation: Extract ONLY the most recent/current employer. For resumes, this is typically the first company listed in work experience. Ignore previous employers.
 - role_title: Extract ONLY the most recent/current job title at that organisation. Ignore previous positions.
+- technology_stack: Extract technologies/tools used ONLY in the most recent job. Look specifically for: Dynamics 365 BC (Business Central), Dynamics 365 Sales, Dynamics 365 F&O (Finance & Operations), Power BI, Power Platform, Power Apps, Power Automate, and similar Microsoft Dynamics/Power Platform technologies. List them comma-separated. Ignore technologies from previous jobs.
 - comments: Note if data is partially visible, unclear, or you're uncertain
 
 If the document contains multiple people, return multiple objects in the entities array.

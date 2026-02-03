@@ -110,6 +110,7 @@ function EntitiesPage() {
         "Address",
         "Organisation",
         "Role/Title",
+        "Technology Stack",
         "Comments",
         "Source Document",
         "Extracted Date"
@@ -130,6 +131,7 @@ function EntitiesPage() {
         escapeField(entity.address),
         escapeField(entity.organisation),
         escapeField(entity.role_title),
+        escapeField(entity.technology_stack),
         escapeField(entity.comments),
         escapeField(entity.source_document_name),
         formatDate(entity.created_at)
@@ -284,6 +286,7 @@ function EntitiesPage() {
                 <EntityField label="Address" value={selectedEntity.address} />
                 <EntityField label="Organisation" value={selectedEntity.organisation} />
                 <EntityField label="Role/Title" value={selectedEntity.role_title} />
+                <EntityField label="Technology Stack" value={selectedEntity.technology_stack} />
                 <EntityField label="Comments" value={selectedEntity.comments} />
                 <EntityField label="Source Document" value={selectedEntity.source_document_name} />
                 <EntityField label="Extracted On" value={formatDate(selectedEntity.created_at)} />
