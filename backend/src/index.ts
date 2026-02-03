@@ -57,6 +57,15 @@ app.use((req, res, next) => {
   next();
 });
 
+// Root route - for health checks that hit /
+app.get("/", (req, res) => {
+  res.json({
+    name: "Document Extractor API",
+    status: "running",
+    endpoints: ["/health", "/api/upload", "/api/entities"],
+  });
+});
+
 // Health check endpoint
 app.get("/health", (req, res) => {
   res.json({
